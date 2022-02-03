@@ -1,0 +1,284 @@
+<!DOCTYPE HTML>
+
+<html manifest='mrfc.appcache'>
+
+<head>
+	<title>MR Fast Clock</title>
+
+	<META NAME="description" CONTENT="">
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta name='viewport' content="width=device-width,initial-scale=1">
+
+	<style>
+		h1, h2, h3 {
+			font-weight: normal; 
+		}
+
+		h1 { font-size: 18pt }
+		h2 { font-size: 16pt }
+		h3 { font-size: 14pt }
+
+		body { 
+			font-family: arial, helvetica, sans-serif;
+			margin: 0;
+		}
+
+		p { text-align: center; max-width: 728px; margin: 10pt auto 10pt auto; }  
+
+		a.mylink {
+			font-size:13pt;
+			background-color:#304e82;
+			color:#ded3c1;
+			border-radius:8px; -webkit-border-radius:8px; -moz-border-radius:8px;
+			padding:4pt; 
+			padding-left:8pt; 
+			padding-right:8pt;
+		}
+
+		a.mylink:active { color:#DDDDDD; }
+		a.mylink:hover { color:#DDDDDD; }
+		a.mylink:visited { color:#DDDDDD; }
+		a.mylink:link { text-decoration:none; color:#DDDDDD;}
+
+		.floating {
+			position: fixed;
+			padding: 0;
+			z-index: 99;
+		}
+
+		div.header {
+			background-color: steelblue; 
+			color: Gainsboro;
+			margin: 0;
+			padding-top: 0.2em; 
+			padding-bottom: 0.2em; 
+			color: White;
+			font-family: arial, sans-serif;
+			font-size: 18pt; 
+			text-align: center;
+			vertical-align: middle;
+			width: 100%;
+		}
+
+		.toolbar { 
+			font-size: 15pt; 
+		}
+		
+		div.toolbar { 
+			padding: 0.5em; 
+			text-align: center;
+		}
+
+		div.footer {
+			padding: 1em;
+			font-family: arial,sans-serif;
+			font-size: 11pt;
+			text-align: center;
+			color: #555555;
+			max-width: 550px;
+			margin: auto;
+		}
+	</style>
+
+	<script type="text/javascript">
+		var date = new Date(2022, 1, 10, 10, 0, 0);
+		// var date = new Date();
+		var hours = date.getHours();
+		var minutes = date.getMinutes();
+		var dia = date.getDay();
+		var mes = date.getMonth();
+		var ano = date.getFullYear();
+		var toggle = false;
+		var interval_id = 0;
+		var heartbeat_id = 0;
+
+		function PageSize() {
+			var myWidth = 0, myHeight = 0;
+			if (typeof (window.innerWidth) == 'number') {
+				//Non-IE
+				myWidth = window.innerWidth;
+				myHeight = window.innerHeight;
+			} else if (document.documentElement && (document.documentElement.clientWidth || document.documentElement.clientHeight)) {
+				//IE 6+ in 'standards compliant mode'
+				myWidth = document.documentElement.clientWidth;
+				myHeight = document.documentElement.clientHeight;
+			} else if (document.body && (document.body.clientWidth || document.body.clientHeight)) {
+				//IE 4 compatible
+				myWidth = document.body.clientWidth;
+				myHeight = document.body.clientHeight;
+			}
+			return myWidth;
+		}
+
+		function UpdateDisplay() {
+			document.getElementById('display_text').innerHTML = ((hours < 10) ? '0' : '') + hours + (toggle ? ':' : ' ') + (minutes < 10 ? '0' : '') + minutes;
+			document.getElementById('fecha_text').innerHTML = String(date).substring(0,15) //display_text
+		}
+
+		function IncHour(hour) {
+			++hour;
+			if (hour > 23){
+				date.setDate(date.getDate() + 1);
+				dia = date.getDay();
+				mes = date.getMonth();
+				ano = date.getFullYear();
+				return 0;
+			}
+			return hour;
+		}
+
+		/*	function IncDia() {
+			date.setDate(date.getDate() + 1);
+			return date;
+		}		
+		*/		
+
+		function OnMinutePulse() {
+			++minutes;
+			if (minutes > 59) {
+				hours = IncHour(hours);
+				minutes = 0;
+			}
+			UpdateDisplay();
+		}
+
+		function OnHeartBeat() {
+			toggle = !toggle;
+			UpdateDisplay();
+		}
+		
+		function ConvertFactorToMilliSec(n) {
+			return (60000 * n / (24));
+		}
+
+		function OnIncHour() {
+			hours = IncHour(hours);
+			UpdateDisplay();
+		}
+
+		function OnIncMinute() {
+			OnMinutePulse();
+		}
+
+		function OnZeroMinute() {
+			minutes = 0;
+			UpdateDisplay();
+		}
+
+		function OnZeroHour() {
+			hours = 12;
+			minutes = 0;
+			UpdateDisplay();
+		}
+
+		function DecHour(hour) {
+			--hour;
+			return (hour < 0) ? 23 : hour;
+		}
+
+		function OnDecHour() {
+			hours = DecHour(hours);
+			UpdateDisplay();
+		}
+
+		function DecMinute(minute) {
+			--minute;
+			return (minute < 0) ? 59 : minute;
+		}
+
+		function OnDecMinute() {
+			minutes = DecMinute(minutes);
+			UpdateDisplay();
+		}
+
+		function ResetHeartbeat() {
+			heartbeat_id = setInterval(OnHeartBeat, 1000);
+		}
+
+		function SetScaleTimer() {
+			interval_id = setInterval(OnMinutePulse, ConvertFactorToMilliSec(document.getElementById('factor').value));
+		}
+
+		function OnPauseResume() {
+			if (heartbeat_id) {
+				clearInterval(interval_id);
+				clearInterval(heartbeat_id);
+				interval_id = 0;
+				heartbeat_id = 0;
+				toggle = true;
+				UpdateDisplay();
+				document.getElementById("pause_resume").value = "Resume";
+			}
+			else {
+				ResetHeartbeat();
+				SetScaleTimer();
+				document.getElementById("pause_resume").value = "Pause";
+			}
+		}
+
+		function InitializePage() {
+			ResetHeartbeat();
+			interval_id = setInterval(OnMinutePulse, 60000);
+		}
+
+		function OnFactorChanged() {
+			clearInterval(interval_id);
+			if (heartbeat_id) SetScaleTimer();
+		}
+
+		function OnResized() {
+			document.getElementById('display_text').style.fontSize = (PageSize() / 3.2).toString() + 'px';
+			document.getElementById('fecha_text').style.fontSize = (PageSize() / 10).toString() + 'px';
+		}
+
+	</script>
+
+</head>
+
+<body onresize="OnResized()" style="font-family:sans-serif">
+
+	<script type="text/javascript">
+		InitializePage();
+	</script>
+
+	<div class='header'>
+		EXERCISE TIME -
+	</div>
+
+	<div style="background-color: black; color: red; white-space: nowrap;">
+		<center id="display_text" style="font-weight:bold; font-family:monospace">--:--</center>
+	</div>
+	
+	<div style="background-color: black; color: red; white-space: nowrap;">
+		<center id="fecha_text" style="font-weight:bold; font-family:monospace">-- -- ----</center>
+	</div>
+	
+	<div class='toolbar'>
+		 Compress 24 hrs into
+		 <input class='toolbar' type="text" size='4' id="factor" style='text-align: center;' onchange="OnFactorChanged()"
+		 value="24" /> Hs.
+		<input class='toolbar' type="button" id="dec_hour" onclick="OnDecHour()" value="-H" title="Decrement the hours by one." />
+		<input class='toolbar' type="button" id="zero_hour" onclick="OnZeroHour()" value="12:00" title="Set the time to noon." />
+		<input class='toolbar' type="button" id="inc_hour" onclick="OnIncHour()" value="+H" title="Increment the hours by one." />
+		<input class='toolbar' type="button" id="dec_minute" onclick="OnDecMinute()" value="-M" title="Decrement the minutes by one." />
+		<input class='toolbar' type="button" id="zero_minute" onclick="OnZeroMinute()" value="00" title="Set the time to the top of the hour." />
+		<input class='toolbar' type="button" id="inc_minute" onclick="OnIncMinute()" value="+M" title="Increment the minutes by one." />
+		<input class='toolbar' type="button" id="pause_resume" onclick="OnPauseResume()" value="PAUSE" />
+	</div>
+
+	
+	<script type="text/javascript">
+		OnResized();
+		OnFactorChanged(24.0);
+	</script>
+
+<hr>
+
+<div class="footer">
+	<p></p>
+	
+</div>
+
+</body>
+
+</html>
